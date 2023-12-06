@@ -1,6 +1,5 @@
 package com.example.foxichat.user_interface
 
-import android.text.TextUtils
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
@@ -9,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +30,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,71 +55,74 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.foxichat.R
 import com.example.foxichat.entity.Message
+import com.example.foxichat.navigation.Screen
 import com.example.foxichat.view_model.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 
-class Screens(val auth: FirebaseAuth, val nav: NavHostController) {
+class Screens(
+    val auth: FirebaseAuth,
+    val nav: NavHostController,
+    val snackbarHostState: SnackbarHostState
+) {
     var viewModel = ChatViewModel()
+    init {
+
+        viewModel.runChat()
+    }
+
+
+
 
     @Composable
     fun ChatScreen() {
 
-
-        viewModel.runChat()
-
-        val messages = remember {
-            viewModel.messages
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 45.dp)
-        ) {
-            items(messages) {
-                MessageCard(msg = it)
+            val messages = remember {
+                viewModel.messages
             }
-        }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(),
-            contentAlignment = Alignment.BottomStart
-        ) {
-            var chatBoxValue by remember { mutableStateOf(TextFieldValue("")) }
-            Row {
-                TextField(
-                    shape = RoundedCornerShape(50.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    value = chatBoxValue,
-                    onValueChange = { chatBoxValue = it },
-                    placeholder = {
-                        Text(text = "Type something")
-                    },
-                    trailingIcon = {
-                        Icon(
-                            Icons.Default.Send,
-                            contentDescription = "clear text",
-                            modifier = Modifier
-                                .clickable {
-                                    val message =
-                                        Message(author = "Dasha", body = chatBoxValue.text)
-                                    message.isFromMe = true
-                                    val database = FirebaseDatabase.getInstance()
-                                    val messagesRef = database.reference.child("messages")
-                                    messagesRef
-                                        .push()
-                                        .setValue(message)
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+            ) {
+                items(messages) {
+                    MessageCard(msg = it)
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+            ) {
+                var chatBoxValue by remember { mutableStateOf(TextFieldValue("")) }
+                Row {
+                    TextField(
+                        shape = RoundedCornerShape(50.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        value = chatBoxValue,
+                        onValueChange = { chatBoxValue = it },
+                        placeholder = {
+                            Text(text = "Type something")
+                        },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    viewModel.sendMessage(auth, chatBoxValue.text)
                                     chatBoxValue = TextFieldValue("")
-                                }
-                                .padding(end = 10.dp)
-                        )
-                    }
-                )
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Default.Send,
+                                    contentDescription = "",
+                                    tint = Color.Black
+                                )
+                            }
+                        }
+                    )
 
+                }
             }
-        }
+
+
     }
 
     @Composable
@@ -199,7 +201,7 @@ class Screens(val auth: FirebaseAuth, val nav: NavHostController) {
                     Image(
                         modifier = Modifier
                             .size(100.dp)
-                            .clip(RoundedCornerShape(200.dp))
+                            .clip(CircleShape)
                             .padding(end = 10.dp),
                         contentScale = ContentScale.Crop,
 
@@ -325,7 +327,8 @@ class Screens(val auth: FirebaseAuth, val nav: NavHostController) {
                             auth = auth,
                             nav = nav,
                             email = email,
-                            password = password
+                            password = password,
+                            snackbarHostState = snackbarHostState
                         )
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -339,7 +342,7 @@ class Screens(val auth: FirebaseAuth, val nav: NavHostController) {
                 }
                 TextButton(
                     onClick = {
-
+                        nav.navigate(Screen.SIGNIN.name)
                     },
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
@@ -348,9 +351,168 @@ class Screens(val auth: FirebaseAuth, val nav: NavHostController) {
                     ) {
                     Text("I have an account")
                 }
+
             }
 
         }
     }
 
+    @Composable
+
+    fun SignInScreen() {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                    
+                horizontalAlignment = Alignment.Start
+            ) {
+                Row {
+                    Image(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(200.dp))
+                            .padding(end = 10.dp),
+                        contentScale = ContentScale.Crop,
+
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = "logo"
+                    )
+                    Text(
+                        modifier = Modifier.padding(top = 30.dp),
+                        text = "FoxiChat",
+                        color = MaterialTheme.colorScheme.secondary,
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+                var usernameValue by remember { mutableStateOf(TextFieldValue("")) }
+                var isValidUsername by remember { mutableStateOf(true) }
+                fun validateUsername(s: String) {
+                    if (s.isBlank() || s.contains(' ')) {
+                        isValidUsername = false;
+                    } else {
+                        isValidUsername= android.util.Patterns.EMAIL_ADDRESS.matcher(s).matches();
+                    }
+                }
+                TextField(
+                    singleLine = true,
+                    shape = RoundedCornerShape(50.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 180.dp),
+                    value = usernameValue,
+                    colors = TextFieldDefaults.colors(
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                    ),
+                    onValueChange = {
+                        usernameValue = it
+                        validateUsername(usernameValue.text)
+                    },
+                    placeholder = {
+                        Text(text = "Email")
+                    },
+                    supportingText = {
+                        if (!isValidUsername) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = "Email must be valid",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                usernameValue = TextFieldValue("")
+                            }
+                        ) {
+                            Icon(
+                                Icons.Outlined.Clear,
+                                contentDescription = "clear text",
+                            )
+                        }
+                    }
+                )
+                var passwordValue by remember { mutableStateOf(TextFieldValue("")) }
+                var isPasswordVisible by remember { mutableStateOf(false) }
+                TextField(
+                    singleLine = true,
+                    shape = RoundedCornerShape(50.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 30.dp),
+                    value = passwordValue,
+                    onValueChange = {
+
+                        passwordValue = it
+
+                    },
+                    colors = TextFieldDefaults.colors(
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                    ),
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    placeholder = {
+                        Text(text = "Password")
+                    },
+                    trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    isPasswordVisible = !isPasswordVisible
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Face,
+                                    contentDescription = "clear text",
+                                )
+                            }
+                    }
+                )
+                Button(
+                    onClick = {
+
+
+                        val email = usernameValue.text.trim()
+                        val password = passwordValue.text
+
+                        viewModel.signInUser(
+                            auth = auth,
+                            nav = nav,
+                            email = email,
+                            password = password,
+                            snackbarHostState = snackbarHostState
+                        )
+                        
+                        
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 30.dp)
+                ) {
+                    Text(text = "Sign Up")
+                }
+                TextButton(
+                    onClick = {
+                        nav.navigate(Screen.SIGNUP.name)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 10.dp),
+
+                    ) {
+                    Text("I don`t have an account")
+                }
+            }
+        }
+    }
 }
