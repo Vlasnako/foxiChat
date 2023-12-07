@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -37,45 +38,40 @@ class MainActivity : ComponentActivity() {
             JetpackComposeExTheme {
 
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val snackbarHostState = remember{ SnackbarHostState() }
-//                    Scaffold(
-//                        snackbarHost = {SnackbarHost(hostState = snackbarHostState)},
-//                    ) {
-  //                      Box(
- //                           modifier = Modifier.padding(it).fillMaxSize()
- //                       ) {
-                           NavigationHost(snackbarHostState)
-//                        }
+                           NavigationHost()
                     }
                 }
             }
 
 
-        }
 
-    //}
+
+    }
     public override fun onStart() {
        super.onStart()
         auth = Firebase.auth
     }
     @Composable
-    fun NavigationHost(snackbarHostState: SnackbarHostState) {
+    fun NavigationHost() {
         val navController = rememberNavController()
 
         NavHost(
             navController = navController,
-            startDestination = if (auth.currentUser == null) Screen.SIGNUP.name else Screen.HOME.name
+            startDestination = Screen.SIGNUP.name
         ) {
 
-            val screens = Screens(auth, navController, snackbarHostState)
+            val screens = Screens(auth, navController)
             composable(Screen.HOME.name) {
-                screens.ChatScreen()
+                screens.HomeScreen()
             }
             composable(Screen.SIGNUP.name) {
                 screens.SignUpScreen()
             }
             composable(Screen.SIGNIN.name) {
                 screens.SignInScreen()
+            }
+            composable(Screen.CHAT_SCREEN.name) {
+                screens.ChatScreen()
             }
         }
     }

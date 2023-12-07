@@ -16,26 +16,36 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,79 +65,117 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.foxichat.R
 import com.example.foxichat.entity.Message
+import com.example.foxichat.entity.User
 import com.example.foxichat.navigation.Screen
 import com.example.foxichat.view_model.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 class Screens(
     val auth: FirebaseAuth,
-    val nav: NavHostController,
-    val snackbarHostState: SnackbarHostState
+    val nav: NavHostController
 ) {
     var viewModel = ChatViewModel()
-    init {
-
-        viewModel.runChat()
-    }
 
 
 
-
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ChatScreen() {
 
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                contentDescription = "icon",
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                            )
+                            Text(
+                                text = "Daria",
+                                modifier = Modifier.padding(start = 10.dp)
+                            )
+                        }
+
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { /*TODO*/ }) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = ""
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    )
+                )
+            },
+            bottomBar = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    var chatBoxValue by remember { mutableStateOf(TextFieldValue("")) }
+                    Row {
+                        TextField(
+                            shape = RoundedCornerShape(50.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            value = chatBoxValue,
+                            onValueChange = { chatBoxValue = it },
+                            placeholder = {
+                                Text(text = "Type something")
+                            },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = {
+                                        viewModel.sendMessage(auth, chatBoxValue.text)
+                                        chatBoxValue = TextFieldValue("")
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Send,
+                                        contentDescription = ""
+                                    )
+                                }
+                            }
+                        )
+
+                    }
+                }
+            }
+        ) { innerPadding ->
             val messages = remember {
                 viewModel.messages
             }
-
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                state = LazyListState()
+
             ) {
                 items(messages) {
                     MessageCard(msg = it)
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-            ) {
-                var chatBoxValue by remember { mutableStateOf(TextFieldValue("")) }
-                Row {
-                    TextField(
-                        shape = RoundedCornerShape(50.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        value = chatBoxValue,
-                        onValueChange = { chatBoxValue = it },
-                        placeholder = {
-                            Text(text = "Type something")
-                        },
-                        trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    viewModel.sendMessage(auth, chatBoxValue.text)
-                                    chatBoxValue = TextFieldValue("")
-                                },
-                            ) {
-                                Icon(
-                                    Icons.Default.Send,
-                                    contentDescription = "",
-                                    tint = Color.Black
-                                )
-                            }
-                        }
-                    )
 
-                }
-            }
+        }
 
 
     }
 
     @Composable
     fun MessageCard(msg: Message) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(10.dp)
@@ -139,7 +187,7 @@ class Screens(
                 horizontalArrangement = if (msg.isFromMe) Arrangement.End else Arrangement.Start
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.img),
+                    painter = painterResource(id = android.R.drawable.arrow_up_float),
                     contentDescription = null,
                     modifier = Modifier
                         .size(40.dp)
@@ -216,13 +264,13 @@ class Screens(
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
-                var usernameValue by remember { mutableStateOf(TextFieldValue("")) }
-                var isValidUsername by remember { mutableStateOf(true) }
+                var emailValue by remember { mutableStateOf(TextFieldValue("")) }
+                var isValidEmail by remember { mutableStateOf(true) }
                 fun validateUsername(s: String) {
                     if (s.isBlank() || s.contains(' ')) {
-                        isValidUsername = false;
+                        isValidEmail = false;
                     } else {
-                        isValidUsername= android.util.Patterns.EMAIL_ADDRESS.matcher(s).matches();
+                        isValidEmail = android.util.Patterns.EMAIL_ADDRESS.matcher(s).matches();
                     }
                 }
                 TextField(
@@ -231,6 +279,49 @@ class Screens(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 180.dp),
+                    value = emailValue,
+                    colors = TextFieldDefaults.colors(
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                    ),
+                    onValueChange = {
+                        emailValue = it
+                        validateUsername(emailValue.text)
+                    },
+                    placeholder = {
+                        Text(text = "Email")
+                    },
+                    supportingText = {
+                        if (!isValidEmail) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = "Email must be valid",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                emailValue = TextFieldValue("")
+                            }
+                        ) {
+                            Icon(
+                                Icons.Outlined.Clear,
+                                contentDescription = "clear text",
+                            )
+                        }
+                    }
+                )
+                var usernameValue by remember { mutableStateOf(TextFieldValue("")) }
+
+                TextField(
+                    singleLine = true,
+                    shape = RoundedCornerShape(50.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp),
                     value = usernameValue,
                     colors = TextFieldDefaults.colors(
                         unfocusedIndicatorColor = Color.Transparent,
@@ -239,19 +330,9 @@ class Screens(
                     ),
                     onValueChange = {
                         usernameValue = it
-                        validateUsername(usernameValue.text)
-                                    },
-                    placeholder = {
-                        Text(text = "Email")
                     },
-                    supportingText = {
-                        if (!isValidUsername) {
-                            Text(
-                                modifier = Modifier.fillMaxWidth(),
-                                text = "Email must be valid",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
+                    placeholder = {
+                        Text(text = "Username")
                     },
                     trailingIcon = {
                         IconButton(
@@ -269,6 +350,9 @@ class Screens(
                 var passwordValue by remember { mutableStateOf(TextFieldValue("")) }
                 var isPasswordVisible by remember { mutableStateOf(false) }
                 var isPasswordValid by remember { mutableStateOf(true) }
+                fun verifyPassword(p: String) {
+                    isPasswordValid = !p.contains(' ')
+                }
                 TextField(
                     singleLine = true,
                     shape = RoundedCornerShape(50.dp),
@@ -277,19 +361,17 @@ class Screens(
                         .padding(top = 30.dp),
                     value = passwordValue,
                     onValueChange = {
-                        if (it.text.contains(' ')) {
-                            isPasswordValid = false
-                            return@TextField
-                        }
+                        verifyPassword(it.text)
+                        if (!isPasswordValid) return@TextField
                         passwordValue = it
                         isPasswordValid = true
 
-                                    },
+                    },
                     colors = TextFieldDefaults.colors(
                         unfocusedIndicatorColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         disabledIndicatorColor = Color.Transparent,
-                    ),supportingText = {
+                    ), supportingText = {
                         if (!isPasswordValid) {
                             Text(
                                 modifier = Modifier.fillMaxWidth(),
@@ -315,20 +397,21 @@ class Screens(
                                 )
                             }
                         } else {
-                            Icon(Icons.Filled.Info,"error", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Filled.Info, "error", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 )
                 Button(
                     onClick = {
-                        val email = usernameValue.text.trim()
+                        val email = emailValue.text.trim()
                         val password = passwordValue.text
+                        val userName = usernameValue.text.trim()
                         viewModel.addNewUser(
                             auth = auth,
                             nav = nav,
                             email = email,
                             password = password,
-                            snackbarHostState = snackbarHostState
+                            username = userName
                         )
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -366,8 +449,8 @@ class Screens(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                    
+                    .fillMaxWidth()
+                    .padding(all = 30.dp),
                 horizontalAlignment = Alignment.Start
             ) {
                 Row {
@@ -395,7 +478,7 @@ class Screens(
                     if (s.isBlank() || s.contains(' ')) {
                         isValidUsername = false;
                     } else {
-                        isValidUsername= android.util.Patterns.EMAIL_ADDRESS.matcher(s).matches();
+                        isValidUsername = android.util.Patterns.EMAIL_ADDRESS.matcher(s).matches();
                     }
                 }
                 TextField(
@@ -463,16 +546,16 @@ class Screens(
                         Text(text = "Password")
                     },
                     trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    isPasswordVisible = !isPasswordVisible
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Face,
-                                    contentDescription = "clear text",
-                                )
+                        IconButton(
+                            onClick = {
+                                isPasswordVisible = !isPasswordVisible
                             }
+                        ) {
+                            Icon(
+                                Icons.Outlined.Face,
+                                contentDescription = "clear text",
+                            )
+                        }
                     }
                 )
                 Button(
@@ -487,10 +570,9 @@ class Screens(
                             nav = nav,
                             email = email,
                             password = password,
-                            snackbarHostState = snackbarHostState
                         )
-                        
-                        
+
+
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondary,
@@ -499,7 +581,7 @@ class Screens(
                         .align(Alignment.CenterHorizontally)
                         .padding(top = 30.dp)
                 ) {
-                    Text(text = "Sign Up")
+                    Text(text = "Sign In")
                 }
                 TextButton(
                     onClick = {
@@ -515,4 +597,55 @@ class Screens(
             }
         }
     }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun HomeScreen() {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(title = { /*TODO*/ })
+            }
+        ) {
+            LazyColumn(
+                modifier = Modifier.padding(it)
+            ) {
+                items(viewModel.users) {
+                    UserInList(user = it)
+                }
+            }
+        }
+    }
+    @Composable
+    fun UserInList(user: User) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                        .padding(end = 10.dp)
+                )
+                Text(
+                    text = user.userName,
+                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.titleSmall
+                )
+                
+            }
+        }
+    }
+
 }

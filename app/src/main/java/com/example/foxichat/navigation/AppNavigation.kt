@@ -3,6 +3,7 @@ package com.example.foxichat.navigation
 enum class Screen {
     HOME,
     SIGNUP,
-    SIGNIN
+    SIGNIN,
+    CHAT_SCREEN
 }
 
