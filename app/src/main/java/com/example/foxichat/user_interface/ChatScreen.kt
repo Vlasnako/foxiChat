@@ -16,16 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.outlined.Clear
@@ -37,14 +35,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -63,19 +60,19 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.foxichat.ChatDatabase
 import com.example.foxichat.R
+import com.example.foxichat.auth.ChatAuth
 import com.example.foxichat.entity.Message
 import com.example.foxichat.entity.User
 import com.example.foxichat.navigation.Screen
 import com.example.foxichat.view_model.ChatViewModel
-import com.google.firebase.auth.FirebaseAuth
 
 class Screens(
-    val auth: FirebaseAuth,
-    val nav: NavHostController
+    private val nav: NavHostController
 ) {
-    var viewModel = ChatViewModel()
-
+    private var viewModel = ChatViewModel()
+    private var otherUser = User()
 
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -97,14 +94,16 @@ class Screens(
                                     .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
                             )
                             Text(
-                                text = "Daria",
+                                text = otherUser.userName,
                                 modifier = Modifier.padding(start = 10.dp)
                             )
                         }
 
                     },
                     navigationIcon = {
-                        IconButton(onClick = { /*TODO*/ }) {
+                        IconButton(onClick = {
+                            nav.navigate(Screen.HOME.name)
+                        }) {
                             Icon(
                                 Icons.Default.ArrowBack,
                                 contentDescription = ""
@@ -136,7 +135,7 @@ class Screens(
                             trailingIcon = {
                                 IconButton(
                                     onClick = {
-                                        viewModel.sendMessage(auth, chatBoxValue.text)
+                                        viewModel.sendMessage(otherUser, chatBoxValue.text)
                                         chatBoxValue = TextFieldValue("")
                                     },
                                 ) {
@@ -153,7 +152,7 @@ class Screens(
             }
         ) { innerPadding ->
             val messages = remember {
-                viewModel.messages
+                viewModel.getMessages(otherUser)
             }
             LazyColumn(
                 modifier = Modifier
@@ -162,9 +161,12 @@ class Screens(
                 state = LazyListState()
 
             ) {
-                items(messages) {
-                    MessageCard(msg = it)
+                messages?.let {
+                    items(it) {
+                        MessageCard(msg = it)
+                    }
                 }
+
             }
 
 
@@ -407,7 +409,6 @@ class Screens(
                         val password = passwordValue.text
                         val userName = usernameValue.text.trim()
                         viewModel.addNewUser(
-                            auth = auth,
                             nav = nav,
                             email = email,
                             password = password,
@@ -566,7 +567,6 @@ class Screens(
                         val password = passwordValue.text
 
                         viewModel.signInUser(
-                            auth = auth,
                             nav = nav,
                             email = email,
                             password = password,
@@ -601,33 +601,60 @@ class Screens(
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun HomeScreen() {
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                TopAppBar(title = { /*TODO*/ })
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Chats"
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            viewModel.signOut(nav)
+                        }) {
+                            Icon(
+                                Icons.Default.ExitToApp,
+                                contentDescription = ""
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    )
+                )
             }
         ) {
             LazyColumn(
                 modifier = Modifier.padding(it)
             ) {
-                items(viewModel.users) {
+                items(viewModel.getOtherUsers()) { it ->
                     UserInList(user = it)
                 }
             }
         }
     }
+
     @Composable
     fun UserInList(user: User) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp)
+                .fillMaxWidth().size(70.dp).shadow(0.5.dp)
+                .clickable (onClick = {
+                    otherUser = user;
+                    //viewModel.runChat(user)
+                    nav.navigate(Screen.CHAT_SCREEN.name)
+                }),
+            contentAlignment = Alignment.CenterStart
+
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.Start
+                    .fillMaxWidth().padding(all = 10.dp)
+
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_launcher_foreground),
@@ -638,12 +665,18 @@ class Screens(
                         .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
                         .padding(end = 10.dp)
                 )
-                Text(
-                    text = user.userName,
-                    color = MaterialTheme.colorScheme.secondary,
-                    style = MaterialTheme.typography.titleSmall
-                )
-                
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.CenterVertically)
+                ) {
+                    Text(
+                        text = user.userName,
+                        color = MaterialTheme.colorScheme.secondary,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+
+
             }
         }
     }
