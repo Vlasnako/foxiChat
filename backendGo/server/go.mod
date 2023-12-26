@@ -6,6 +6,7 @@ require github.com/lib/pq v1.10.9
 
 require (
 	firebase.google.com/go v3.13.0+incompatible
+	firebase.google.com/go/v4 v4.13.0
 	golang.org/x/crypto v0.16.0
 )
 
@@ -17,7 +18,6 @@ require (
 	cloud.google.com/go/iam v1.1.5 // indirect
 	cloud.google.com/go/longrunning v0.5.4 // indirect
 	cloud.google.com/go/storage v1.36.0 // indirect
-	firebase.google.com/go/v4 v4.13.0 // indirect
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-chi/chi/v5 v5.0.10 // indirect

@@ -16,6 +16,29 @@ type NotificationToken struct {
 	Timestamp time.Time          `bson:"timestamp" json:"timestamp"`
 }
 
+// Room schema
+type Room struct {
+	ID        primitive.ObjectID `bson:"_id" json:"id"`
+	Name      string             `bson:"name" json:"name"`
+	Uids      []string           `bson:"users" json:"users"`
+	Timestamp time.Time          `bson:"timestamp" json:"timestamp"`
+}
+
+// User schema
+type User struct {
+	Email       string `json:"email"`
+	PhoneNumber string `json:"phone_number"`
+	Password    string `json:"password"`
+	DisplayName string `json:"display_name"`
+	PhotoUrl    string `json:"photo_url"`
+}
+
+// Sign in credentials
+type SignInCred struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 func SendNotification(
 	fcmClient *messaging.Client,
 	ctx context.Context,
