@@ -133,14 +133,33 @@ func RoomRoutes(
 			fmt.Printf("Error creating the room: %v", err)
 			return
 		}
+
 		err = db.InsertRoom(roomsCollection, ctx, room)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			fmt.Printf("Error inserting the room: %v", err)
 			return
 		}
+	})
+
+	r.Post("/get-user-rooms", func(w http.ResponseWriter, r *http.Request) {
+		var uid string
+		err := json.NewDecoder(r.Body).Decode(&uid)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			fmt.Printf("Endpoint: Error getting user rooms: %v", err)
+			return
+		}
+		rooms, err := db.GetSpecificUserRooms(roomsCollection, ctx, uid)
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(rooms); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			fmt.Printf("Error encoding rooms: %v\n", err)
+			return
+		}
 
 	})
+
 	r.Get("/get-all-rooms", func(w http.ResponseWriter, r *http.Request) {
 		rooms, err := db.GetRooms(roomsCollection, ctx)
 		if err != nil {

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"server/internal"
 	"time"
 
@@ -42,17 +43,11 @@ func InsertRoom(
 	room internal.Room,
 ) error {
 	// Check if the room already exists
-	filter := bson.D{{Key: "name", Value: room.Name}}
-	res := collection.FindOne(ctx, filter)
 
-	if res.Err() != nil {
-		if res.Err() == mongo.ErrNoDocuments {
-			// If room does not exist insert it
-			room.ID = primitive.NewObjectID()
-			_, err := collection.InsertOne(ctx, room)
-			return err
-		}
-		return res.Err()
+	room.ID = primitive.NewObjectID()
+	_, err := collection.InsertOne(ctx, room)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -74,6 +69,7 @@ func GetRooms(
 	filter := bson.D{}
 	tokenCursor, err := coll.Find(ctx, filter)
 	if err != nil {
+		fmt.Printf("error in getting all rooms: %v", err)
 		return nil, err
 	}
 
@@ -85,9 +81,37 @@ func GetRooms(
 	}
 
 	if err != nil {
+		fmt.Printf("error in getting all rooms: %v", err)
 		return nil, err
 	}
 	return rooms, nil
+}
+func GetSpecificUserRooms(
+	coll *mongo.Collection,
+	ctx context.Context,
+	uid string,
+) ([]internal.Room, error) {
+	//filter only those rooms, whose user array contains given id
+	filter := bson.D{{Key: "users", Value: bson.D{{Key: "$in", Value: []string{uid}}}}}
+	tokenCursor, err := coll.Find(ctx, filter)
+
+	if err != nil {
+		fmt.Printf("error in getting user rooms: %v", err)
+		return nil, err
+	}
+
+	rooms := make([]internal.Room, 0)
+	for tokenCursor.Next(ctx) {
+		var room internal.Room
+		err = tokenCursor.Decode(&room)
+		rooms = append(rooms, room)
+	}
+	if err != nil {
+		fmt.Printf("error in getting user rooms: %v", err)
+		return nil, err
+	}
+	return rooms, nil
+
 }
 
 func GetNotificationTokens(
