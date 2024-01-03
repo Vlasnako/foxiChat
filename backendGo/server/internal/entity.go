@@ -24,6 +24,16 @@ type Room struct {
 	Timestamp time.Time          `bson:"timestamp" json:"timestamp"`
 }
 
+// Message schema
+type Message struct {
+	ID         primitive.ObjectID `bson:"_id" json:"id"`
+	RoomId     string             `bson:"room_id" json:"room_id"`
+	AuthorId   string             `bson:"author_id" json:"author_id"`
+	AuthorName string             `bson:"author_name" json:"authorname"`
+	Body       string             `bson:"body" json:"body"`
+	Timestamp  time.Time          `bson:"timestamp" json:"timestamp"`
+}
+
 // User schema
 type User struct {
 	Email       string `json:"email"`

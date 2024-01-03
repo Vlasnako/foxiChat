@@ -35,6 +35,20 @@ func InsertToken(
 	_, err := collection.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"timestamp": time.Now().UTC()}})
 	return err
 }
+func InsertMessage(
+	collection *mongo.Collection,
+	ctx context.Context,
+	message internal.Message,
+) error {
+	message.ID = primitive.NewObjectID()
+
+	_, err := collection.InsertOne(ctx, message)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // Create new room
 func InsertRoom(
@@ -55,11 +69,18 @@ func InsertRoom(
 func AddUserToRoom(
 	collection *mongo.Collection,
 	ctx context.Context,
-	roomName string,
+	roomId string,
 	uid string,
 ) error {
-	filter := bson.D{{Key: "name", Value: roomName}}
-	_, err := collection.UpdateOne(ctx, filter, bson.M{"$push": bson.M{"users": uid}})
+	roomObjectID, err := primitive.ObjectIDFromHex(roomId)
+	if err != nil {
+		return err // Return the error if the conversion fails
+	}
+
+	// Use the ObjectID in the filter
+	filter := bson.D{{Key: "_id", Value: roomObjectID}}
+	_, err = collection.UpdateOne(ctx, filter, bson.M{"$push": bson.M{"users": uid}})
+	fmt.Println("Joined room")
 	return err
 }
 func GetRooms(

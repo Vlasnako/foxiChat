@@ -35,11 +35,11 @@ func main() {
 	defer mc.Disconnect(ctx)
 	//Create a mongo database with the db name
 	mongoDB := mc.Database(DB_NAME)
-	//Create a notification token collection
 
 	tokenCollection := mongoDB.Collection(NOTIFICATION_TOKENS_COLL_NAME)
 	//messageCollection := mongoDB.Collection(MESSAGE_COLLECTION)
 	roomsCollection := mongoDB.Collection(ROOMS_COLLECTION)
+	messagesCollection := mongoDB.Collection(MESSAGE_COLLECTION)
 
 	const hours_in_a_week = 24 * 7
 	//create the index model with the field "timestamp"
@@ -116,10 +116,33 @@ func main() {
 
 	r.Mount("/users", UserRoutes(ctx, tokenCollection))
 	r.Mount("/rooms", RoomRoutes(ctx, roomsCollection))
-
+	r.Mount("/messages", MessageRoutes(ctx, messagesCollection))
 	// Start the server
 	fmt.Println("Server Starting on Port 3000")
 	log.Fatal(http.ListenAndServe(":3000", r))
+}
+func MessageRoutes(
+	ctx context.Context, messageCollection *mongo.Collection,
+) chi.Router {
+	r := chi.NewRouter()
+	r.Post("/send-message", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Endpoint: Send message")
+		var message internal.Message
+		err := json.NewDecoder(r.Body).Decode(&message)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			fmt.Printf("Error decoding the message: %v", err)
+			return
+		}
+		err = db.InsertMessage(messageCollection, ctx, message)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			fmt.Printf("Error inserting the message: %v", err)
+			return
+		}
+	})
+	return r
 }
 func RoomRoutes(
 	ctx context.Context, roomsCollection *mongo.Collection,
@@ -158,6 +181,21 @@ func RoomRoutes(
 			return
 		}
 
+	})
+	r.Post("/join-room", func(w http.ResponseWriter, r *http.Request) {
+		var request map[string]string
+		err := json.NewDecoder(r.Body).Decode(&request)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			fmt.Printf("Endpoint: Error adding user to room: %v", err)
+			return
+		}
+		err = db.AddUserToRoom(roomsCollection, ctx, request["room_id"], request["uid"])
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			fmt.Printf("Error joining the room: %v", err)
+			return
+		}
 	})
 
 	r.Get("/get-all-rooms", func(w http.ResponseWriter, r *http.Request) {
