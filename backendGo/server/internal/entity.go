@@ -1,10 +1,8 @@
 package internal
 
 import (
-	"context"
 	"time"
 
-	"firebase.google.com/go/v4/messaging"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -29,7 +27,7 @@ type Message struct {
 	ID         primitive.ObjectID `bson:"_id" json:"id"`
 	RoomId     string             `bson:"room_id" json:"room_id"`
 	AuthorId   string             `bson:"author_id" json:"author_id"`
-	AuthorName string             `bson:"author_name" json:"authorname"`
+	AuthorName string             `bson:"author_name" json:"author_name"`
 	Body       string             `bson:"body" json:"body"`
 	Timestamp  time.Time          `bson:"timestamp" json:"timestamp"`
 }
@@ -47,31 +45,4 @@ type User struct {
 type SignInCred struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-}
-
-func SendNotification(
-	fcmClient *messaging.Client,
-	ctx context.Context,
-	tokens []string,
-	userId, message string,
-) error {
-	//Send to One Token
-	_, err := fcmClient.Send(ctx, &messaging.Message{
-		Token: tokens[0],
-		Data: map[string]string{
-			message: message,
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	//Send to Multiple Tokens
-	_, err = fcmClient.SendEachForMulticast(ctx, &messaging.MulticastMessage{
-		Data: map[string]string{
-			message: message,
-		},
-		Tokens: tokens,
-	})
-	return err
 }

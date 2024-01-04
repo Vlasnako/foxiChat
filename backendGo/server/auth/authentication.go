@@ -64,19 +64,20 @@ func CreateNewUser(
 	if err != nil {
 		log.Fatalf("error getting Auth client: %v\n", err)
 	}
+	fmt.Printf("USER: email: %v, displayName: %v", email, displayName)
 	params := (&auth.UserToCreate{}).
 		Email(email).
 		EmailVerified(false).
 		PhoneNumber(phoneNumber).
 		Password(password).
-		DisplayName("John Doe").
+		DisplayName(displayName).
 		PhotoURL(photoUrl).
 		Disabled(false)
 	u, err := client.CreateUser(ctx, params)
 	if err != nil {
 		fmt.Printf("error creating user: %v\n", err)
 	}
-	log.Printf("Successfully created user: %v\n", u)
+	log.Printf("Successfully created user: %v\n", u.DisplayName)
 	return u, err
 }
 

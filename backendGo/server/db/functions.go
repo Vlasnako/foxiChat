@@ -107,6 +107,36 @@ func GetRooms(
 	}
 	return rooms, nil
 }
+
+func GetRoomById(
+	coll *mongo.Collection,
+	ctx context.Context,
+	id string,
+) (internal.Room, error) {
+	roomObjectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return internal.Room{}, err // Return the error if the conversion fails
+	}
+	filter := bson.D{{Key: "_id", Value: roomObjectID}}
+	tokenCursor, err := coll.Find(ctx, filter)
+	if err != nil {
+		fmt.Printf("error in getting all rooms: %v", err)
+		return internal.Room{}, err
+	}
+
+	for tokenCursor.Next(ctx) {
+		var room internal.Room
+		err = tokenCursor.Decode(&room)
+		return room, err
+	}
+
+	if err != nil {
+		fmt.Printf("error in getting room: %v", err)
+		return internal.Room{}, err
+	}
+	return internal.Room{}, err
+}
+
 func GetSpecificUserRooms(
 	coll *mongo.Collection,
 	ctx context.Context,
@@ -157,4 +187,30 @@ func GetNotificationTokens(
 		return nil, err
 	}
 	return tokens, nil
+}
+
+func GetNotificationTokensForUsers(
+	tokenCollection *mongo.Collection,
+	roomCollection *mongo.Collection,
+	ctx context.Context,
+	roomId string,
+) ([]string, error) {
+	room, err := GetRoomById(roomCollection, ctx, roomId)
+
+	if err != nil {
+		fmt.Printf("Error in getting room by id: %v", err)
+		return nil, err
+	}
+	tokens := make([]string, 0)
+
+	for i := 0; i < len(room.Uids); i++ {
+		userTokens, err := GetNotificationTokens(tokenCollection, ctx, room.Uids[i])
+		if err != nil {
+			fmt.Printf("Error in getting room by id: %v", err)
+			return nil, err
+		}
+		tokens = append(tokens, userTokens...)
+	}
+	return tokens, nil
+
 }

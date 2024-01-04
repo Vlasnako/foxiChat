@@ -10,8 +10,10 @@ import (
 	"server/auth"
 	"server/db"
 	"server/internal"
+	notificationservice "server/notification_service"
 	"time"
 
+	"firebase.google.com/go/v4/messaging"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -72,25 +74,9 @@ func main() {
 
 	r := chi.NewRouter()
 	// tokens endpoint
-	r.Post("/send-notifications", func(w http.ResponseWriter, r *http.Request) {
-		var message internal.NotificationToken
-		err := json.NewDecoder(r.Body).Decode(&message)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		tokens, err := db.GetNotificationTokens(tokenCollection, ctx, message.UserId)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		// **************************** SAMPLE MESSAGE *******************************************
-		err = internal.SendNotification(fcmClient, ctx, tokens, message.UserId, "message.Message")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	})
+	// r.Post("/send-notifications", func(w http.ResponseWriter, r *http.Request) {
+
+	// })
 	r.Post("/tokens", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("endpoint /tokens")
 		// Decode the token sent from the user into the token variable
@@ -116,13 +102,13 @@ func main() {
 
 	r.Mount("/users", UserRoutes(ctx, tokenCollection))
 	r.Mount("/rooms", RoomRoutes(ctx, roomsCollection))
-	r.Mount("/messages", MessageRoutes(ctx, messagesCollection))
+	r.Mount("/messages", MessageRoutes(ctx, fcmClient, messagesCollection, tokenCollection, roomsCollection))
 	// Start the server
 	fmt.Println("Server Starting on Port 3000")
 	log.Fatal(http.ListenAndServe(":3000", r))
 }
 func MessageRoutes(
-	ctx context.Context, messageCollection *mongo.Collection,
+	ctx context.Context, fcmClient *messaging.Client, messageCollection *mongo.Collection, tokenCollection *mongo.Collection, roomCollection *mongo.Collection,
 ) chi.Router {
 	r := chi.NewRouter()
 	r.Post("/send-message", func(w http.ResponseWriter, r *http.Request) {
@@ -141,6 +127,20 @@ func MessageRoutes(
 			fmt.Printf("Error inserting the message: %v", err)
 			return
 		}
+		// **************************** Sending notifications *******************************************
+		tokens, err := db.GetNotificationTokensForUsers(tokenCollection, roomCollection, ctx, message.RoomId)
+		fmt.Println("User tokens: ", tokens)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = notificationservice.SendMultipleNotificationTokens(fcmClient, ctx, tokens, message)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("Success")
 	})
 	return r
 }
