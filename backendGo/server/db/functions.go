@@ -33,6 +33,7 @@ func InsertToken(
 
 	// If token exists update the timestamp to now
 	_, err := collection.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"timestamp": time.Now().UTC()}})
+	_, err = collection.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"userId": token.UserId}})
 	return err
 }
 func InsertMessage(
@@ -48,6 +49,31 @@ func InsertMessage(
 	}
 
 	return nil
+}
+func GetMessagesFromRoom(
+	collection *mongo.Collection,
+	ctx context.Context,
+	roomId string,
+) ([]internal.Message, error) {
+
+	filter := bson.D{{Key: "room_id", Value: roomId}}
+	tokenCursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		fmt.Printf("Error in getting room messages: %v", err)
+		return nil, err
+	}
+	messages := make([]internal.Message, 0)
+	for tokenCursor.Next(ctx) {
+		var message internal.Message
+		err = tokenCursor.Decode(&message)
+		messages = append(messages, message)
+	}
+	if err != nil {
+		fmt.Printf("Error in getting room messages: %v", err)
+		return nil, err
+	}
+	return messages, err
+
 }
 
 // Create new room

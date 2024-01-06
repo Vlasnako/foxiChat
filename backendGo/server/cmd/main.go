@@ -142,6 +142,23 @@ func MessageRoutes(
 		}
 		fmt.Println("Success")
 	})
+	r.Get("/get-messages", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("worked")
+		id := r.URL.Query().Get("roomid")
+		fmt.Println("URL param:", id)
+		messages, err := db.GetMessagesFromRoom(messageCollection, ctx, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			fmt.Printf("Error getting messages: %v", err)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(messages); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			fmt.Printf("Error getting messages: %v\n", err)
+			return
+		}
+
+	})
 	return r
 }
 func RoomRoutes(

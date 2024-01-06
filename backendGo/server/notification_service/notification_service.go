@@ -36,6 +36,8 @@ func SendMultipleNotificationTokens(
 	_, err := fcmClient.SendEachForMulticast(ctx, &messaging.MulticastMessage{
 		Data: map[string]string{
 			"author_name": message.AuthorName,
+			"author_id":   message.AuthorId,
+			"room_id":     message.RoomId,
 			"body":        message.Body,
 			"timestamp":   message.Timestamp.String(),
 		},
